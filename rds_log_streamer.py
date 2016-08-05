@@ -26,9 +26,10 @@ class LogDescription(object):
 
 
 class RDS(object):
-  def __init__(self, delay_seconds):
+  def __init__(self, delay_seconds, region_name, profile_name):
     self.delay_seconds = delay_seconds
-    self.client = boto3.client('rds')
+    session = boto3.Session(profile_name=profile_name)
+    self.client = session.client('rds', region_name=region_name)
 
   def _aws_api_call(self, func, kwargs):
     time.sleep(self.delay_seconds)
@@ -130,7 +131,7 @@ class RDSLogStreamer(object):
           elif self.output_format == 'text':
             datalines = [line for line in logdata.split('\n') if line.strip()]
             for line in datalines:
-              print('{}:[[ANNOTATED: awsDbInstanceId={}, awsRdsLogFileName={}]]{}'.format(
+              print('{}:[[ANNOTATED: awsDbInstanceId="{}", awsRdsLogFileName="{}"]]{}'.format(
                     date, log_desc.db_instance, log_desc.name, line))
       self.log_state.setdefault(log_desc.db_instance, {})
       self.log_state[log_desc.db_instance].setdefault(log_desc.name, {})
@@ -164,6 +165,8 @@ def main():
                       help="stream all new logs from all db instances and then exit")
   parser.add_argument('--output_format', '-t', choices=['json', 'text'], default='json',
                       help="output format")
+  parser.add_argument('--aws_region_name', default='us-east-1', help="AWS region name")
+  parser.add_argument('--aws_profile_name', default='default', help='AWS credentials profile name')
   args = parser.parse_args()
 
   os.environ['TZ'] = 'UTC'
@@ -172,7 +175,7 @@ def main():
                       format='%(asctime)s %(message)s')
   logging.info('Starting rds_log_streamer with args: %s', args)
 
-  rds = RDS(args.api_call_delay_seconds)
+  rds = RDS(args.api_call_delay_seconds, args.aws_region_name, args.aws_profile_name)
 
   rds_log_streamer = RDSLogStreamer(args.log_state_file, args.db_instance_ids,
                                     args.minutes_in_the_past_to_start, rds,
