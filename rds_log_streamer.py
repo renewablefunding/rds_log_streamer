@@ -53,7 +53,7 @@ class RDSLogStreamer(object):
   ONE_DAY = 86400000 #milliseconds
 
   def __init__(self, log_state_file, db_instance_ids,
-               minutes_in_the_past_to_start, rds, retention_days, run_once):
+               minutes_in_the_past_to_start, rds, retention_days, run_once, output_format):
     self.rds = rds
     self.log_state_file = log_state_file
     self.db_instance_ids = db_instance_ids
@@ -61,6 +61,7 @@ class RDSLogStreamer(object):
     self.retention_days = retention_days 
     self.log_state = {}
     self.run_once = run_once
+    self.output_format = output_format
     try:
       with open(self.log_state_file, 'r') as infile:
         self.log_state = json.load(infile)
@@ -118,11 +119,19 @@ class RDSLogStreamer(object):
         elif self.DATE_REGEX.match(fields[1]) and (len(fields) % 2 == 1):
           start_index = 1
         for i in range(start_index, len(fields))[::2]:
-          line = {'logdata': fields[i+1],
-                  'date': fields[i],
-                  'awsDbInstanceId': log_desc.db_instance,
-                  'awsRdsLogFileName': log_desc.name}
-          print json.dumps(line)
+          date = fields[i]
+          logdata = fields[i+1]
+          if self.output_format == 'json':
+            line = {'logdata': logdata,
+                    'date': date,
+                    'awsDbInstanceId': log_desc.db_instance,
+                    'awsRdsLogFileName': log_desc.name}
+            print json.dumps(line)
+          elif self.output_format == 'text':
+            datalines = [line for line in logdata.split('\n') if line.strip()]
+            for line in datalines:
+              print('{}:[[ANNOTATED: awsDbInstanceId={}, awsRdsLogFileName={}]]{}'.format(
+                    date, log_desc.db_instance, log_desc.name, line))
       self.log_state.setdefault(log_desc.db_instance, {})
       self.log_state[log_desc.db_instance].setdefault(log_desc.name, {})
       self.log_state[log_desc.db_instance][log_desc.name] = {
@@ -153,6 +162,8 @@ def main():
                       help="log filename for this script's logs")
   parser.add_argument('--run_once', '-o', dest='run_once', action='store_true',
                       help="stream all new logs from all db instances and then exit")
+  parser.add_argument('--output_format', '-t', choices=['json', 'text'], default='json',
+                      help="output format")
   args = parser.parse_args()
 
   os.environ['TZ'] = 'UTC'
@@ -165,7 +176,7 @@ def main():
 
   rds_log_streamer = RDSLogStreamer(args.log_state_file, args.db_instance_ids,
                                     args.minutes_in_the_past_to_start, rds,
-                                    args.retention_days, args.run_once)
+                                    args.retention_days, args.run_once, args.output_format)
   rds_log_streamer.stream()
 
 if __name__ == '__main__':
