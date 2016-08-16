@@ -123,9 +123,9 @@ class RDSLogStreamer(object):
           date = fields[i]
           logdata = fields[i+1]
           if self.output_format == 'json':
-            line = {'logdata': logdata,
-                    'date': date,
-                    'awsDbInstanceId': log_desc.db_instance,
+            line = {'timestamp': date,
+                    'message': logdata,
+                    'host': log_desc.db_instance,
                     'awsRdsLogFileName': log_desc.name}
             print json.dumps(line)
           elif self.output_format == 'text':
@@ -165,7 +165,7 @@ def main():
                       help="stream all new logs from all db instances and then exit")
   parser.add_argument('--output_format', '-t', choices=['json', 'text'], default='json',
                       help="output format")
-  parser.add_argument('--aws_region_name', default='us-east-1', help="AWS region name")
+  parser.add_argument('--aws_region_name', type=str, help="AWS region name")
   parser.add_argument('--aws_profile_name', default='default', help='AWS credentials profile name')
   args = parser.parse_args()
 
