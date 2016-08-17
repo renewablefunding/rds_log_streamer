@@ -5,6 +5,7 @@ import datetime
 import argparse
 import time
 import re
+import collections
 import os
 import sys
 import json
@@ -123,10 +124,11 @@ class RDSLogStreamer(object):
           date = fields[i]
           logdata = fields[i+1]
           if self.output_format == 'json':
-            line = {'timestamp': date,
-                    'message': logdata,
-                    'host': log_desc.db_instance,
-                    'awsRdsLogFileName': log_desc.name}
+            line = collections.OrderedDict()
+            line['timestamp'] = date
+            line['message'] = logdata
+            line['host'] = log_desc.db_instance
+            line['awsRdsLogFileName'] = log_desc.name
             print json.dumps(line)
           elif self.output_format == 'text':
             datalines = [line for line in logdata.split('\n') if line.strip()]
