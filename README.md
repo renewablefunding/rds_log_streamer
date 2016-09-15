@@ -13,6 +13,9 @@ Stream log lines from multiple RDS instances to STDOUT.
                                [--retention_days RETENTION_DAYS]
                                [--log_level {DEBUG,INFO,WARN,ERROR,CRITICAL}]
                                [--log_filename LOG_FILENAME] [--run_once]
+                               [--output_format {json,text}]
+                               [--aws_region_name AWS_REGION_NAME]
+                               [--aws_profile_name AWS_PROFILE_NAME]
     
     Stream logs from rds for a set of db instances.
     
@@ -35,5 +38,9 @@ Stream log lines from multiple RDS instances to STDOUT.
                             log filename for this script's logs
       --run_once, -o        stream all new logs from all db instances and then
                             exit
-
-  
+      --output_format {json,text}, -t {json,text}
+                            output format
+      --aws_region_name AWS_REGION_NAME
+                            AWS region name
+      --aws_profile_name AWS_PROFILE_NAME
+                            AWS credentials profile name
