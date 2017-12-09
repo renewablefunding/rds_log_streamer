@@ -93,18 +93,21 @@ class RDSLogStreamer(object):
 
   def _get_logfile_descriptions(self):
     for instance_id in self.db_instance_ids:
-      response = self.rds.describe_db_log_files(instance_id)
-      request_time_string = response['ResponseMetadata']['HTTPHeaders']['date']
-      request_time = time.strptime(request_time_string, '%a, %d %b %Y %H:%M:%S %Z')
-      request_time_ms = int(time.mktime(request_time)) * 1000
-      for logfile in response['DescribeDBLogFiles']:
-        logfile_name = logfile['LogFileName']
-        log_desc = LogDescription(instance_id, logfile_name, logfile['LastWritten'],
-            self.log_state.get(instance_id, {}).get(logfile_name, {}).get('pending_read', False),
-            self.log_state.get(instance_id, {}).get(logfile_name, {}).get('marker', '0'),
-            self.log_state.get(instance_id, {}).get(logfile_name, {}).get('time_ms'))
-        if log_desc.needs_reading(self.time_threshold_ms):
-          yield log_desc, request_time_ms
+      try:
+        response = self.rds.describe_db_log_files(instance_id)
+        request_time_string = response['ResponseMetadata']['HTTPHeaders']['date']
+        request_time = time.strptime(request_time_string, '%a, %d %b %Y %H:%M:%S %Z')
+        request_time_ms = int(time.mktime(request_time)) * 1000
+        for logfile in response['DescribeDBLogFiles']:
+          logfile_name = logfile['LogFileName']
+          log_desc = LogDescription(instance_id, logfile_name, logfile['LastWritten'],
+              self.log_state.get(instance_id, {}).get(logfile_name, {}).get('pending_read', False),
+              self.log_state.get(instance_id, {}).get(logfile_name, {}).get('marker', '0'),
+              self.log_state.get(instance_id, {}).get(logfile_name, {}).get('time_ms'))
+          if log_desc.needs_reading(self.time_threshold_ms):
+            yield log_desc, request_time_ms
+      except self.rds.client.exceptions.DBInstanceNotFoundFault:
+        logging.error('Instance ID %s was not found', instance_id)
 
   def stream(self):
     if self.run_once:
